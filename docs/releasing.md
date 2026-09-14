@@ -33,4 +33,6 @@ git push origin v1.2.3
 - `Ytdlgui-v1.2.3-win-x64.zip`
 - `SHA256SUMS.txt`
 
-ZIP には自己完結型の単一 EXE、`LICENSE`、`README.md`、`THIRD_PARTY_NOTICES.md` が含まれます。既に同じタグの GitHub Release がある場合は、添付ファイルが置き換えられます。
+ZIP には自己完結型の単一 EXE、GUIが使えない場合の `install-tools.bat` と
+`Install-Tools.ps1`、`LICENSE`、`README.md`、`THIRD_PARTY_NOTICES.md` が含まれます。
+既に同じタグの GitHub Release がある場合は、添付ファイルが置き換えられます。

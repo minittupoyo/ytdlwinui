@@ -111,7 +111,7 @@
         AutomationProperties.AutomationId="CancelToolInstallButton"/>
       </StackPanel>
       <Button Content="全ツールを再インストール（開発用）" Command="{x:Bind ViewModel.ForceInstallToolsCommand}"
-       HorizontalAlignment="Left" Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsDevelopmentBuild)}"
+       HorizontalAlignment="Left" Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsDevelopmentBuild), Mode=OneWay}"
        AutomationProperties.AutomationId="ForceInstallToolsButton"/>
      </StackPanel>
      <TextBlock Text="GitHub公式リリースから取得し、SHA-256検証後にアプリ専用フォルダーへ配置します。"

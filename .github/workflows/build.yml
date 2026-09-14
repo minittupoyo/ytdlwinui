@@ -19,5 +19,14 @@ jobs:
           dotnet-version: 10.0.x
       - name: Test tool downloads and checksums
         run: dotnet test .\YtdlWinUI.Tests\YtdlWinUI.Tests.csproj --configuration Release
+      - name: Test fallback tool installer
+        shell: pwsh
+        run: |
+          $destination = Join-Path '${{ runner.temp }}' 'fallback-tools'
+          $env:YTDLGUI_INSTALLER_NO_PAUSE = '1'
+          & cmd.exe /d /c ".\scripts\install-tools.bat -Destination `"$destination`" -Architecture x64 -Tools yt-dlp"
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $destination 'yt-dlp.exe'))) {
+            throw 'Fallback tool installer did not produce the expected files.'
+          }
       - name: Build WinUI app
         run: dotnet build .\YtdlWinUI\YtdlWinUI.csproj --configuration Release -p:Platform=x64 -r win-x64

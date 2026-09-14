@@ -63,6 +63,7 @@ jobs:
 
           Copy-Item -LiteralPath (Join-Path $releaseDirectory 'publish\YtdlWinUI.exe') -Destination $packageDirectory
           Copy-Item -LiteralPath '.\LICENSE', '.\README.md', '.\THIRD_PARTY_NOTICES.md' -Destination $packageDirectory
+          Copy-Item -LiteralPath '.\scripts\install-tools.bat', '.\scripts\Install-Tools.ps1' -Destination $packageDirectory
 
           $archivePath = Join-Path $releaseDirectory "$packageName.zip"
           Compress-Archive -Path $packageDirectory -DestinationPath $archivePath -CompressionLevel Optimal

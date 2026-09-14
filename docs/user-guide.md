@@ -13,6 +13,10 @@ GitHub Releases の配布版は Windows x64 向けです。アプリ本体に .N
 
 自動インストールは x64／ARM64 版に対応しています。x86 版では外部ツールを手動で用意してください。
 
+GUIから導入できない場合は、配布ZIPに含まれる `install-tools.bat` を実行してください。
+公式Releaseから `yt-dlp`、`deno`、`ffmpeg`、`ffprobe` を取得してSHA-256を検証し、
+GUIと同じ `%LOCALAPPDATA%\ytdlgui\bin` へ配置します。管理者権限やPATHの変更は不要です。
+
 手動で用意する場合は PATH に追加するか、ビルドされたアプリと同じ場所の `tools` フォルダーへ次のファイルを配置します。
 
 - `yt-dlp.exe`
