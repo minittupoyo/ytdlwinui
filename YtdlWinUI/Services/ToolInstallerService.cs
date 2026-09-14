@@ -49,8 +49,11 @@ public sealed class ToolInstallerService
         string source = $"https://github.com/yt-dlp/yt-dlp/releases/latest/download/{asset}";
         string checksums = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
         string downloaded = Path.Combine(temporaryDirectory, asset);
-        await DownloadAndVerifyAsync("yt-dlp", source, checksums, asset, downloaded, progress, cancellationToken);
-        InstallFile(downloaded, Path.Combine(ToolPaths.ManagedToolsDirectory, "yt-dlp.exe"));
+        await DownloadAndVerifyAsync("yt-dlp", source, checksums, asset, downloaded, progress, cancellationToken)
+            .ConfigureAwait(false);
+        progress.Report(new ToolInstallProgress("yt-dlp", "yt-dlp を配置しています…", null));
+        await Task.Run(() => InstallFile(downloaded,
+            Path.Combine(ToolPaths.ManagedToolsDirectory, "yt-dlp.exe")), cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task InstallDenoAsync(string architecture, string temporaryDirectory,
@@ -61,9 +64,14 @@ public sealed class ToolInstallerService
         string source = $"https://github.com/denoland/deno/releases/latest/download/{asset}";
         string checksums = $"{source}.sha256sum";
         string archive = Path.Combine(temporaryDirectory, asset);
-        await DownloadAndVerifyAsync("Deno", source, checksums, asset, archive, progress, cancellationToken);
-        string extracted = ExtractExecutable(archive, "deno.exe", temporaryDirectory);
-        InstallFile(extracted, Path.Combine(ToolPaths.ManagedToolsDirectory, "deno.exe"));
+        await DownloadAndVerifyAsync("Deno", source, checksums, asset, archive, progress, cancellationToken)
+            .ConfigureAwait(false);
+        progress.Report(new ToolInstallProgress("Deno", "Deno を展開して配置しています…", null));
+        await Task.Run(() =>
+        {
+            string extracted = ExtractExecutable(archive, "deno.exe", temporaryDirectory);
+            InstallFile(extracted, Path.Combine(ToolPaths.ManagedToolsDirectory, "deno.exe"));
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task InstallFfmpegAsync(string architecture, string temporaryDirectory,
@@ -74,11 +82,16 @@ public sealed class ToolInstallerService
         string source = $"https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/{asset}";
         string checksums = "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/checksums.sha256";
         string archive = Path.Combine(temporaryDirectory, asset);
-        await DownloadAndVerifyAsync("FFmpeg", source, checksums, asset, archive, progress, cancellationToken);
-        InstallFile(ExtractExecutable(archive, "ffmpeg.exe", temporaryDirectory),
-            Path.Combine(ToolPaths.ManagedToolsDirectory, "ffmpeg.exe"));
-        InstallFile(ExtractExecutable(archive, "ffprobe.exe", temporaryDirectory),
-            Path.Combine(ToolPaths.ManagedToolsDirectory, "ffprobe.exe"));
+        await DownloadAndVerifyAsync("FFmpeg", source, checksums, asset, archive, progress, cancellationToken)
+            .ConfigureAwait(false);
+        progress.Report(new ToolInstallProgress("FFmpeg", "FFmpeg を展開して配置しています…", null));
+        await Task.Run(() =>
+        {
+            InstallFile(ExtractExecutable(archive, "ffmpeg.exe", temporaryDirectory),
+                Path.Combine(ToolPaths.ManagedToolsDirectory, "ffmpeg.exe"));
+            InstallFile(ExtractExecutable(archive, "ffprobe.exe", temporaryDirectory),
+                Path.Combine(ToolPaths.ManagedToolsDirectory, "ffprobe.exe"));
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task DownloadAndVerifyAsync(string tool, string source, string checksums,
@@ -88,34 +101,34 @@ public sealed class ToolInstallerService
         ValidateDownloadUri(source);
         ValidateDownloadUri(checksums);
         progress.Report(new ToolInstallProgress(tool, $"{tool} のチェックサムを取得しています…", null));
-        string checksumDocument = await GetChecksumDocumentAsync(checksums, cancellationToken);
+        string checksumDocument = await GetChecksumDocumentAsync(checksums, cancellationToken).ConfigureAwait(false);
         string expectedHash = ParseSha256(checksumDocument, assetName);
 
         progress.Report(new ToolInstallProgress(tool, $"{tool} をダウンロードしています…", 0));
         using HttpResponseMessage response = await HttpClient.GetAsync(source,
-            HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         ValidateResolvedUri(response.RequestMessage?.RequestUri);
         long? totalBytes = response.Content.Headers.ContentLength;
         {
-            await using Stream input = await response.Content.ReadAsStreamAsync(cancellationToken);
+            await using Stream input = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             await using FileStream output = new(destination, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, 128 * 1024, FileOptions.Asynchronous);
             byte[] buffer = new byte[128 * 1024];
             long received = 0;
             int read;
-            while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
+            while ((read = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
             {
-                await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                 received += read;
                 double? percent = totalBytes > 0 ? received * 100.0 / totalBytes.Value : null;
                 progress.Report(new ToolInstallProgress(tool, $"{tool} をダウンロードしています…", percent));
             }
-            await output.FlushAsync(cancellationToken);
+            await output.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
 
         progress.Report(new ToolInstallProgress(tool, $"{tool} を検証しています…", null));
-        string actualHash = await ComputeSha256Async(destination, cancellationToken);
+        string actualHash = await ComputeSha256Async(destination, cancellationToken).ConfigureAwait(false);
         if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"{tool} のSHA-256チェックサムが一致しません。ファイルは配置されませんでした。");
     }
@@ -152,16 +165,16 @@ public sealed class ToolInstallerService
 
     private static async Task<string> GetChecksumDocumentAsync(string source, CancellationToken cancellationToken)
     {
-        using HttpResponseMessage response = await HttpClient.GetAsync(source, cancellationToken);
+        using HttpResponseMessage response = await HttpClient.GetAsync(source, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         ValidateResolvedUri(response.RequestMessage?.RequestUri);
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<string> ComputeSha256Async(string path, CancellationToken cancellationToken)
     {
         await using FileStream stream = File.OpenRead(path);
-        byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken);
+        byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
         return Convert.ToHexString(hash);
     }
 
