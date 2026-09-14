@@ -11,9 +11,12 @@ public partial class MainPageViewModel : ObservableObject
     private readonly SettingsService _settingsService = new();
     private readonly YtDlpService _ytDlpService = new();
     private readonly BrowserProfileService _browserProfileService = new();
+    private readonly ToolInstallerService _toolInstallerService = new();
     private CancellationTokenSource? _downloadCancellation;
+    private CancellationTokenSource? _toolInstallCancellation;
     private CancellationTokenSource? _noticeCancellation;
     private bool _isInitializing = true;
+    private IReadOnlyList<string> _missingTools = [];
 
     public IReadOnlyList<string> Formats { get; } = ["mp4", "mkv", "mp3", "aac", "flac"];
     public IReadOnlyList<string> CookieBrowsers { get; } = ["使用しない", "Firefox", "Floorp", "Zen"];
@@ -36,12 +39,14 @@ public partial class MainPageViewModel : ObservableObject
     [ObservableProperty] public partial double ProgressValue { get; set; }
     [ObservableProperty] public partial string Status { get; set; } = "準備完了";
     [ObservableProperty] public partial string LogText { get; set; } = "";
+    [ObservableProperty] public partial string DependencyStatus { get; set; } = "確認しています…";
     [ObservableProperty] public partial string NoticeTitle { get; set; } = "";
     [ObservableProperty] public partial string NoticeMessage { get; set; } = "";
     [ObservableProperty] public partial bool IsNoticeOpen { get; set; }
     [ObservableProperty] public partial NoticeKind NoticeSeverity { get; set; }
 
     public bool IsAudioFormat => SelectedFormat is "mp3" or "aac" or "flac";
+    public bool HasMissingTools => _missingTools.Count > 0;
     public bool HasCookieProfiles => CookieProfiles.Count > 0;
     public string CookieProfileHint => SelectedCookieBrowser == "使用しない"
         ? "ブラウザーのCookieを使用しません。"
@@ -61,8 +66,9 @@ public partial class MainPageViewModel : ObservableObject
         SelectedCookieBrowser = CookieBrowsers.Contains(settings.CookieBrowser) ? settings.CookieBrowser : "使用しない";
         RefreshCookieProfiles(settings.CookieProfilePath);
         _isInitializing = false;
-        IReadOnlyList<string> missing = _ytDlpService.MissingDependencies();
-        if (missing.Count > 0) ShowNotice("必要なツールが見つかりません", string.Join("、", missing), NoticeKind.Warning);
+        RefreshDependencies();
+        if (HasMissingTools)
+            ShowNotice("必要なツールが見つかりません", $"{string.Join("、", _missingTools)}。設定から自動インストールできます。", NoticeKind.Warning);
     }
 
     public void SetOutputPath(string path) { OutputPath = path; _ = SaveAsync(); }
@@ -129,8 +135,73 @@ public partial class MainPageViewModel : ObservableObject
     }
 
     private bool CanDownload() => !IsBusy;
-    [RelayCommand] private void Cancel() => _downloadCancellation?.Cancel();
+    [RelayCommand] private void Cancel()
+    {
+        _downloadCancellation?.Cancel();
+        _toolInstallCancellation?.Cancel();
+    }
     [RelayCommand] private void ClearLog() => LogText = "";
+
+    [RelayCommand(CanExecute = nameof(CanInstallTools))]
+    private async Task InstallToolsAsync()
+    {
+        if (!HasMissingTools) return;
+        IsBusy = true;
+        IsProgressIndeterminate = true;
+        ProgressValue = 0;
+        _toolInstallCancellation = new CancellationTokenSource();
+        DownloadCommand.NotifyCanExecuteChanged();
+        InstallToolsCommand.NotifyCanExecuteChanged();
+        try
+        {
+            var progress = new Progress<ToolInstallProgress>(update =>
+            {
+                Status = update.Status;
+                IsProgressIndeterminate = update.Percent is null;
+                if (update.Percent is not null) ProgressValue = update.Percent.Value;
+            });
+            await _toolInstallerService.InstallMissingAsync(_missingTools, progress, _toolInstallCancellation.Token);
+            RefreshDependencies();
+            if (HasMissingTools)
+                throw new InvalidOperationException($"未導入のツールがあります: {string.Join("、", _missingTools)}");
+            Status = "必要なツールをインストールしました";
+            ProgressValue = 100;
+            ShowNotice("インストール完了", Status, NoticeKind.Success, TimeSpan.FromSeconds(5));
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "ツールのインストールをキャンセルしました";
+            ShowNotice("キャンセル", Status, NoticeKind.Informational, TimeSpan.FromSeconds(3));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or
+                                   InvalidOperationException or PlatformNotSupportedException or UnauthorizedAccessException)
+        {
+            Status = "ツールをインストールできませんでした";
+            AppendLog(ex.Message);
+            ShowNotice("インストールエラー", ex.Message, NoticeKind.Error);
+        }
+        finally
+        {
+            _toolInstallCancellation?.Dispose();
+            _toolInstallCancellation = null;
+            IsBusy = false;
+            IsProgressIndeterminate = false;
+            DownloadCommand.NotifyCanExecuteChanged();
+            InstallToolsCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private bool CanInstallTools() => HasMissingTools && !IsBusy;
+
+    private void RefreshDependencies()
+    {
+        _missingTools = _ytDlpService.MissingDependencies();
+        DependencyStatus = HasMissingTools
+            ? $"不足: {string.Join("、", _missingTools)}"
+            : $"すべて利用可能（{ToolPaths.ManagedToolsDirectory} または PATH）";
+        OnPropertyChanged(nameof(HasMissingTools));
+        InstallToolsCommand.NotifyCanExecuteChanged();
+    }
 
     private void AppendLog(string line)
     {

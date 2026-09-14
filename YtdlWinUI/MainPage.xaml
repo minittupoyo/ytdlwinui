@@ -10,7 +10,13 @@
   </Grid.RowDefinitions>
   <InfoBar IsOpen="{x:Bind ViewModel.IsNoticeOpen, Mode=TwoWay}" Title="{x:Bind ViewModel.NoticeTitle, Mode=OneWay}"
    Message="{x:Bind ViewModel.NoticeMessage, Mode=OneWay}" Severity="{x:Bind ViewModel.NoticeSeverity, Mode=OneWay, Converter={StaticResource NoticeKindToInfoBarSeverityConverter}}"
-   AutomationProperties.AutomationId="StatusNotice"/>
+   AutomationProperties.AutomationId="StatusNotice">
+   <InfoBar.ActionButton>
+    <Button Content="自動インストール" Command="{x:Bind ViewModel.InstallToolsCommand}"
+     Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
+     AutomationProperties.AutomationId="NoticeInstallToolsButton"/>
+   </InfoBar.ActionButton>
+  </InfoBar>
   <TextBox Grid.Row="1" Header="動画またはプレイリストの URL" PlaceholderText="https://..."
    Text="{x:Bind ViewModel.Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
    AutomationProperties.AutomationId="UrlInput"/>
@@ -40,6 +46,17 @@
       <ComboBox Grid.Column="1" Header="品質" ItemsSource="{x:Bind ViewModel.QualityOptions, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedQuality, Mode=TwoWay}" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="QualitySelector"/>
      </Grid>
      <TextBox Header="ファイル名テンプレート" Text="{x:Bind ViewModel.FilenameTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FilenameTemplate"/>
+     <StackPanel Spacing="8">
+      <TextBlock Text="外部ツール" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+      <TextBlock Text="{x:Bind ViewModel.DependencyStatus, Mode=OneWay}"
+       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>
+      <Button Content="不足ツールを自動インストール" HorizontalAlignment="Left"
+       Command="{x:Bind ViewModel.InstallToolsCommand}"
+       Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
+       AutomationProperties.AutomationId="InstallToolsButton"/>
+      <TextBlock Text="公式GitHub Releaseから取得し、SHA-256を検証してからアプリ専用フォルダーへ配置します。"
+       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>
+     </StackPanel>
      <StackPanel Spacing="8">
       <TextBlock Text="ブラウザーCookie" Style="{StaticResource BodyStrongTextBlockStyle}"/>
       <Grid ColumnSpacing="12">

@@ -12,6 +12,8 @@ public sealed class YtDlpService
     public string? FindExecutable(string name)
     {
         string fileName = name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name : $"{name}.exe";
+        string managed = Path.Combine(ToolPaths.ManagedToolsDirectory, fileName);
+        if (File.Exists(managed)) return managed;
         string bundled = Path.Combine(AppContext.BaseDirectory, "tools", fileName);
         if (File.Exists(bundled)) return bundled;
         foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
@@ -28,7 +30,7 @@ public sealed class YtDlpService
 
     public IReadOnlyList<string> MissingDependencies()
     {
-        string[] required = ["yt-dlp", "ffmpeg", "deno"];
+        string[] required = ["yt-dlp", "ffmpeg", "ffprobe", "deno"];
         return required.Where(tool => FindExecutable(tool) is null).ToArray();
     }
 
@@ -78,6 +80,9 @@ public sealed class YtDlpService
         // StreamReader expects UTF-8, which corrupts non-ASCII video titles.
         startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
         startInfo.Environment["PYTHONUTF8"] = "1";
+        startInfo.Environment.TryGetValue("PATH", out string? existingPath);
+        startInfo.Environment["PATH"] = string.Join(Path.PathSeparator,
+            ToolPaths.ManagedToolsDirectory, existingPath ?? "");
         foreach (string argument in BuildArguments(settings, url)) startInfo.ArgumentList.Add(argument);
         using var process = new Process { StartInfo = startInfo };
         process.Start();

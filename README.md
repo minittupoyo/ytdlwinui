@@ -21,10 +21,14 @@
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Windows App Development CLI](https://github.com/microsoft/WindowsAppSDK) 0.6以降
 - Windowsの開発者モード
-- `yt-dlp`、`ffmpeg`、`deno`
+- `yt-dlp`、`ffmpeg`、`deno`（アプリ内から自動インストール可能）
 
-外部ツールはPATHに追加するか、ビルドされたアプリと同じ場所の `tools` フォルダーへ
-`yt-dlp.exe`、`ffmpeg.exe`、`deno.exe` を配置してください。
+不足している外部ツールは設定画面の「不足ツールを自動インストール」から導入できます。
+公式GitHub Releaseから取得したファイルをSHA-256で検証し、
+`%LOCALAPPDATA%\ytdlgui\bin` へ保存します。PATHは変更しません。
+
+手動で用意する場合はPATHに追加するか、ビルドされたアプリと同じ場所の `tools` フォルダーへ
+`yt-dlp.exe`、`ffmpeg.exe`、`ffprobe.exe`、`deno.exe` を配置してください。
 
 ## ビルドと実行
 
@@ -63,10 +67,15 @@ YtdlWinUI/
 └─ MainPage.xaml メイン画面
 ```
 
+## ライセンス
+
+Ytdlgui本体は [MIT License](LICENSE) です。自動取得される外部ツールには各プロジェクトの
+ライセンスが適用されます。特に公式 `yt-dlp.exe` と取得対象のFFmpegビルドはGPL系コードを含みます。
+詳しくは [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
+
 ## 現在の制限
 
 - UI文字列は日本語固定です。
 - 配布用MSIXとコード署名はまだ用意していません。
-- ライセンスは未設定です。明示的な許可がない限り、著作権法上認められた範囲を超える再利用はできません。
 
 不具合報告や改善提案は [Issues](https://github.com/minittupoyo/ytdlwinui/issues) へお願いします。
