@@ -17,5 +17,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+      - name: Test tool downloads and checksums
+        run: dotnet test .\YtdlWinUI.Tests\YtdlWinUI.Tests.csproj --configuration Release
       - name: Build WinUI app
         run: dotnet build .\YtdlWinUI\YtdlWinUI.csproj --configuration Release -p:Platform=x64 -r win-x64

@@ -81,7 +81,7 @@ public sealed class ToolInstallerService
             Path.Combine(ToolPaths.ManagedToolsDirectory, "ffprobe.exe"));
     }
 
-    private static async Task DownloadAndVerifyAsync(string tool, string source, string checksums,
+    internal static async Task DownloadAndVerifyAsync(string tool, string source, string checksums,
         string assetName, string destination, IProgress<ToolInstallProgress> progress,
         CancellationToken cancellationToken)
     {
@@ -120,15 +120,33 @@ public sealed class ToolInstallerService
             throw new InvalidDataException($"{tool} のSHA-256チェックサムが一致しません。ファイルは配置されませんでした。");
     }
 
-    private static string ParseSha256(string document, string assetName)
+    internal static string ParseSha256(string document, string assetName)
     {
+        string? labeledHash = null;
+        bool labeledPathMatches = false;
         foreach (string line in document.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
         {
             string trimmed = line.Trim();
+            if (trimmed.StartsWith("Hash", StringComparison.OrdinalIgnoreCase))
+            {
+                int separator = trimmed.IndexOf(':');
+                if (separator >= 0)
+                {
+                    string candidate = trimmed[(separator + 1)..].Trim();
+                    if (candidate.Length == 64 && candidate.All(Uri.IsHexDigit)) labeledHash = candidate;
+                }
+            }
+            else if (trimmed.StartsWith("Path", StringComparison.OrdinalIgnoreCase))
+            {
+                int separator = trimmed.IndexOf(':');
+                labeledPathMatches = separator >= 0 &&
+                    trimmed[(separator + 1)..].Trim().EndsWith(assetName, StringComparison.OrdinalIgnoreCase);
+            }
             if (!trimmed.EndsWith(assetName, StringComparison.OrdinalIgnoreCase)) continue;
             string hash = trimmed.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)[0];
             if (hash.Length == 64 && hash.All(Uri.IsHexDigit)) return hash;
         }
+        if (labeledHash is not null && labeledPathMatches) return labeledHash;
         throw new InvalidDataException($"{assetName} のSHA-256チェックサムが見つかりません。");
     }
 
