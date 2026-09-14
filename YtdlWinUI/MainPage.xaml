@@ -10,13 +10,7 @@
   </Grid.RowDefinitions>
   <InfoBar IsOpen="{x:Bind ViewModel.IsNoticeOpen, Mode=TwoWay}" Title="{x:Bind ViewModel.NoticeTitle, Mode=OneWay}"
    Message="{x:Bind ViewModel.NoticeMessage, Mode=OneWay}" Severity="{x:Bind ViewModel.NoticeSeverity, Mode=OneWay, Converter={StaticResource NoticeKindToInfoBarSeverityConverter}}"
-   AutomationProperties.AutomationId="StatusNotice">
-   <InfoBar.ActionButton>
-    <Button Content="自動インストール" Command="{x:Bind ViewModel.InstallToolsCommand}"
-     Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
-     AutomationProperties.AutomationId="NoticeInstallToolsButton"/>
-   </InfoBar.ActionButton>
-  </InfoBar>
+   AutomationProperties.AutomationId="StatusNotice"/>
   <TextBox Grid.Row="1" Header="動画またはプレイリストの URL" PlaceholderText="https://..."
    Text="{x:Bind ViewModel.Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
    AutomationProperties.AutomationId="UrlInput"/>
@@ -46,17 +40,6 @@
       <ComboBox Grid.Column="1" Header="品質" ItemsSource="{x:Bind ViewModel.QualityOptions, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedQuality, Mode=TwoWay}" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="QualitySelector"/>
      </Grid>
      <TextBox Header="ファイル名テンプレート" Text="{x:Bind ViewModel.FilenameTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FilenameTemplate"/>
-     <StackPanel Spacing="8">
-      <TextBlock Text="外部ツール" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-      <TextBlock Text="{x:Bind ViewModel.DependencyStatus, Mode=OneWay}"
-       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>
-      <Button Content="不足ツールを自動インストール" HorizontalAlignment="Left"
-       Command="{x:Bind ViewModel.InstallToolsCommand}"
-       Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
-       AutomationProperties.AutomationId="InstallToolsButton"/>
-      <TextBlock Text="公式GitHub Releaseから取得し、SHA-256を検証してからアプリ専用フォルダーへ配置します。"
-       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>
-     </StackPanel>
      <StackPanel Spacing="8">
       <TextBlock Text="ブラウザーCookie" Style="{StaticResource BodyStrongTextBlockStyle}"/>
       <Grid ColumnSpacing="12">
@@ -96,10 +79,48 @@
    </Grid>
   </Grid>
   <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+   <Button Click="OpenAppSettings_Click" ToolTipService.ToolTip="アプリ設定"
+    AutomationProperties.Name="アプリ設定" AutomationProperties.AutomationId="AppSettingsButton">
+    <FontIcon Glyph="&#xE713;"/>
+   </Button>
    <Button Content="キャンセル" Command="{x:Bind ViewModel.CancelCommand}" Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsBusy), Mode=OneWay}" AutomationProperties.AutomationId="CancelButton"/>
    <Button Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.DownloadCommand}" AutomationProperties.AutomationId="DownloadButton">
     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE896;"/><TextBlock Text="ダウンロード"/></StackPanel>
    </Button>
   </StackPanel>
+  <ContentDialog x:Name="AppSettingsDialog" Grid.RowSpan="6" Title="アプリ設定"
+   CloseButtonText="閉じる" DefaultButton="Close" AutomationProperties.AutomationId="AppSettingsDialog">
+   <StackPanel Spacing="20" MinWidth="480">
+    <StackPanel Spacing="8">
+     <TextBlock Text="外部ツール" Style="{StaticResource SubtitleTextBlockStyle}"/>
+     <TextBlock Text="{x:Bind ViewModel.DependencyStatus, Mode=OneWay}"
+      Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap"
+      AutomationProperties.AutomationId="AppDependencyStatus"/>
+     <StackPanel Spacing="6" Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsInstallingTools), Mode=OneWay}">
+      <TextBlock Text="{x:Bind ViewModel.Status, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+      <ProgressBar Minimum="0" Maximum="100" Value="{x:Bind ViewModel.ProgressValue, Mode=OneWay}"
+       IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"/>
+     </StackPanel>
+     <StackPanel Orientation="Horizontal" Spacing="8">
+      <Button Content="不足ツールを自動インストール" Command="{x:Bind ViewModel.InstallToolsCommand}"
+       Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
+       AutomationProperties.AutomationId="InstallToolsButton"/>
+      <Button Content="キャンセル" Command="{x:Bind ViewModel.CancelCommand}"
+       Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsInstallingTools), Mode=OneWay}"
+       AutomationProperties.AutomationId="CancelToolInstallButton"/>
+     </StackPanel>
+     <TextBlock Text="GitHub公式リリースから取得し、SHA-256検証後にアプリ専用フォルダーへ配置します。"
+      Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>
+    </StackPanel>
+    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+    <StackPanel Spacing="8">
+     <TextBlock Text="設定の初期化" Style="{StaticResource SubtitleTextBlockStyle}"/>
+     <TextBlock Text="保存先、形式、品質、ファイル名、Cookieなどのダウンロード設定を既定値へ戻します。外部ツールとログは削除しません。"
+      Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap"/>
+     <Button Content="ダウンロード設定を初期化" HorizontalAlignment="Left" Click="RequestResetSettings_Click"
+      AutomationProperties.AutomationId="ResetSettingsButton"/>
+    </StackPanel>
+   </StackPanel>
+  </ContentDialog>
  </Grid>
 </Page>

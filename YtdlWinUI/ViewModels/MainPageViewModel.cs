@@ -35,6 +35,7 @@ public partial class MainPageViewModel : ObservableObject
     [ObservableProperty] public partial bool EmbedThumbnail { get; set; }
     [ObservableProperty] public partial bool CropThumbnail { get; set; }
     [ObservableProperty] public partial bool IsBusy { get; set; }
+    [ObservableProperty] public partial bool IsInstallingTools { get; set; }
     [ObservableProperty] public partial bool IsProgressIndeterminate { get; set; }
     [ObservableProperty] public partial double ProgressValue { get; set; }
     [ObservableProperty] public partial string Status { get; set; } = "準備完了";
@@ -72,6 +73,36 @@ public partial class MainPageViewModel : ObservableObject
     }
 
     public void SetOutputPath(string path) { OutputPath = path; _ = SaveAsync(); }
+    public void RefreshDependencyStatus() => RefreshDependencies();
+
+    public void ResetSettings()
+    {
+        try
+        {
+            _settingsService.Reset();
+            _isInitializing = true;
+            AppSettings defaults = new();
+            OutputPath = defaults.OutputPath;
+            SelectedFormat = defaults.Format;
+            RefreshQualities("自動");
+            FilenameTemplate = defaults.FilenameTemplate;
+            PlaylistMode = defaults.PlaylistMode;
+            AlbumMode = defaults.AlbumMode;
+            EmbedThumbnail = defaults.EmbedThumbnail;
+            CropThumbnail = defaults.CropThumbnail;
+            SelectedCookieBrowser = defaults.CookieBrowser;
+            RefreshCookieProfiles();
+            _isInitializing = false;
+            Status = "設定を初期化しました";
+            ShowNotice("初期化完了", "ダウンロード設定を既定値に戻しました。", NoticeKind.Success,
+                TimeSpan.FromSeconds(5));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _isInitializing = false;
+            ShowNotice("設定を初期化できませんでした", ex.Message, NoticeKind.Error);
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanDownload))]
     private async Task DownloadAsync()
@@ -147,6 +178,7 @@ public partial class MainPageViewModel : ObservableObject
     {
         if (!HasMissingTools) return;
         IsBusy = true;
+        IsInstallingTools = true;
         IsProgressIndeterminate = true;
         ProgressValue = 0;
         _toolInstallCancellation = new CancellationTokenSource();
@@ -184,6 +216,7 @@ public partial class MainPageViewModel : ObservableObject
         {
             _toolInstallCancellation?.Dispose();
             _toolInstallCancellation = null;
+            IsInstallingTools = false;
             IsBusy = false;
             IsProgressIndeterminate = false;
             DownloadCommand.NotifyCanExecuteChanged();

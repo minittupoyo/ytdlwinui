@@ -36,4 +36,9 @@ public sealed class SettingsService
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
+
+    public void Reset()
+    {
+        if (File.Exists(SettingsPath)) File.Delete(SettingsPath);
+    }
 }
