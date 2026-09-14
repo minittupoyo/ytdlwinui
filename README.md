@@ -5,6 +5,15 @@
 `yt-dlp` を使って動画・音声を保存する、日本語UIのWindows向けデスクトップアプリです。
 [minittupoyo/ytdlgui](https://github.com/minittupoyo/ytdlgui) の機能を C#、WinUI 3、MVVM で再実装しています。
 
+## ダウンロード
+
+[GitHub Releases](https://github.com/minittupoyo/ytdlwinui/releases/latest) から
+`Ytdlgui-v1.0.0-win-x64.zip` をダウンロードし、展開後の `YtdlWinUI.exe` を実行してください。
+インストールや自己署名証明書の追加は不要です。
+
+配布版は .NET と Windows App SDK を含む自己完結型です。初回起動時は単一EXE内の実行ファイルを
+一時フォルダーへ展開するため、起動に少し時間がかかる場合があります。
+
 ## 主な機能
 
 - MP4、MKV、MP3、AAC、FLACへの保存
@@ -18,9 +27,6 @@
 ## 動作要件
 
 - Windows 10 バージョン1809以降、またはWindows 11
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Windows App Development CLI](https://github.com/microsoft/WindowsAppSDK) 0.6以降
-- Windowsの開発者モード
 - `yt-dlp`、`ffmpeg`、`deno`（アプリ内から自動インストール可能）
 
 不足している外部ツールは設定画面の「不足ツールを自動インストール」から導入できます。
@@ -35,6 +41,9 @@
 「アプリ設定」で行えます。設定初期化ではダウンロード済みツールやログは削除されません。
 
 ## ビルドと実行
+
+ソースからビルドする場合は、.NET 10 SDK、Windows App Development CLI 0.6以降、
+Windowsの開発者モードが必要です。
 
 ```powershell
 git clone https://github.com/minittupoyo/ytdlwinui.git
@@ -80,6 +89,6 @@ Ytdlgui本体は [MIT License](LICENSE) です。自動取得される外部ツ�
 ## 現在の制限
 
 - UI文字列は日本語固定です。
-- 配布用MSIXとコード署名はまだ用意していません。
+- GitHub配布版はWindows x64向けです。
 
 不具合報告や改善提案は [Issues](https://github.com/minittupoyo/ytdlwinui/issues) へお願いします。
