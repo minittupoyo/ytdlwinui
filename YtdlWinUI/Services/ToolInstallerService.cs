@@ -97,19 +97,22 @@ public sealed class ToolInstallerService
         response.EnsureSuccessStatusCode();
         ValidateResolvedUri(response.RequestMessage?.RequestUri);
         long? totalBytes = response.Content.Headers.ContentLength;
-        await using Stream input = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using FileStream output = new(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        byte[] buffer = new byte[128 * 1024];
-        long received = 0;
-        int read;
-        while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
         {
-            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            received += read;
-            double? percent = totalBytes > 0 ? received * 100.0 / totalBytes.Value : null;
-            progress.Report(new ToolInstallProgress(tool, $"{tool} をダウンロードしています…", percent));
+            await using Stream input = await response.Content.ReadAsStreamAsync(cancellationToken);
+            await using FileStream output = new(destination, FileMode.CreateNew, FileAccess.Write,
+                FileShare.None, 128 * 1024, FileOptions.Asynchronous);
+            byte[] buffer = new byte[128 * 1024];
+            long received = 0;
+            int read;
+            while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                received += read;
+                double? percent = totalBytes > 0 ? received * 100.0 / totalBytes.Value : null;
+                progress.Report(new ToolInstallProgress(tool, $"{tool} をダウンロードしています…", percent));
+            }
+            await output.FlushAsync(cancellationToken);
         }
-        await output.FlushAsync(cancellationToken);
 
         progress.Report(new ToolInstallProgress(tool, $"{tool} を検証しています…", null));
         string actualHash = await ComputeSha256Async(destination, cancellationToken);

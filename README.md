@@ -8,7 +8,7 @@
 ## ダウンロード
 
 [GitHub Releases](https://github.com/minittupoyo/ytdlwinui/releases/latest) から
-`Ytdlgui-v1.0.0-win-x64.zip` をダウンロードし、展開後の `YtdlWinUI.exe` を実行してください。
+最新の `Ytdlgui-v*-win-x64.zip` をダウンロードし、展開後の `YtdlWinUI.exe` を実行してください。
 インストールや自己署名証明書の追加は不要です。
 
 配布版は .NET と Windows App SDK を含む自己完結型です。初回起動時は単一EXE内の実行ファイルを
