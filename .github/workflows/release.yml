@@ -1,0 +1,109 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $version = $tag.Substring(1)
+          [xml]$project = Get-Content -Raw '.\YtdlWinUI\YtdlWinUI.csproj'
+          $projectVersion = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+          if ($projectVersion -ne $version) {
+            throw "Tag version $version does not match project version $projectVersion."
+          }
+
+      - name: Run tests
+        run: dotnet test .\YtdlWinUI.Tests\YtdlWinUI.Tests.csproj --configuration Release
+
+      - name: Publish single-file app
+        shell: pwsh
+        run: |
+          $publishDirectory = Join-Path '${{ runner.temp }}' 'release\publish'
+          dotnet publish .\YtdlWinUI\YtdlWinUI.csproj `
+            --configuration Release `
+            -p:Platform=x64 `
+            -r win-x64 `
+            --self-contained true `
+            -p:WindowsPackageType=None `
+            -p:WindowsAppSDKSelfContained=true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o $publishDirectory
+
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $releaseDirectory = Join-Path '${{ runner.temp }}' 'release'
+          $packageName = "Ytdlgui-$tag-win-x64"
+          $packageDirectory = Join-Path $releaseDirectory $packageName
+          New-Item -ItemType Directory -Force $packageDirectory | Out-Null
+
+          Copy-Item -LiteralPath (Join-Path $releaseDirectory 'publish\YtdlWinUI.exe') -Destination $packageDirectory
+          Copy-Item -LiteralPath '.\LICENSE', '.\README.md', '.\THIRD_PARTY_NOTICES.md' -Destination $packageDirectory
+
+          $archivePath = Join-Path $releaseDirectory "$packageName.zip"
+          Compress-Archive -Path $packageDirectory -DestinationPath $archivePath -CompressionLevel Optimal
+          $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath
+          "$($hash.Hash.ToLowerInvariant())  $packageName.zip" |
+            Set-Content -Encoding ascii -NoNewline (Join-Path $releaseDirectory 'SHA256SUMS.txt')
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ytdlgui-${{ github.ref_name }}-win-x64
+          path: |
+            ${{ runner.temp }}\release\Ytdlgui-${{ github.ref_name }}-win-x64.zip
+            ${{ runner.temp }}\release\SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $releaseDirectory = Join-Path '${{ runner.temp }}' 'release'
+          $archivePath = Join-Path $releaseDirectory "Ytdlgui-$tag-win-x64.zip"
+          $checksumPath = Join-Path $releaseDirectory 'SHA256SUMS.txt'
+
+          $releaseExists = $false
+          try {
+            gh release view $tag --json tagName 2>$null | Out-Null
+            $releaseExists = $LASTEXITCODE -eq 0
+          }
+          catch {
+            $releaseExists = $false
+          }
+
+          if ($releaseExists) {
+            gh release upload $tag $archivePath $checksumPath --clobber
+          }
+          else {
+            gh release create $tag $archivePath $checksumPath `
+              --verify-tag `
+              --title "Ytdlgui $tag" `
+              --generate-notes
+          }

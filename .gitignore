@@ -9,3 +9,4 @@ AppPackages/
 TestResults/
 artifacts/
 test-artifacts/
+.release/
