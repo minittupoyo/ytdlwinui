@@ -101,13 +101,18 @@
       <ProgressBar Minimum="0" Maximum="100" Value="{x:Bind ViewModel.ProgressValue, Mode=OneWay}"
        IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"/>
      </StackPanel>
-     <StackPanel Orientation="Horizontal" Spacing="8">
-      <Button Content="不足ツールを自動インストール" Command="{x:Bind ViewModel.InstallToolsCommand}"
-       Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
-       AutomationProperties.AutomationId="InstallToolsButton"/>
-      <Button Content="キャンセル" Command="{x:Bind ViewModel.CancelCommand}"
-       Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsInstallingTools), Mode=OneWay}"
-       AutomationProperties.AutomationId="CancelToolInstallButton"/>
+     <StackPanel Spacing="8">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+       <Button Content="不足ツールを自動インストール" Command="{x:Bind ViewModel.InstallToolsCommand}"
+        Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.HasMissingTools), Mode=OneWay}"
+        AutomationProperties.AutomationId="InstallToolsButton"/>
+       <Button Content="キャンセル" Command="{x:Bind ViewModel.CancelCommand}"
+        Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsInstallingTools), Mode=OneWay}"
+        AutomationProperties.AutomationId="CancelToolInstallButton"/>
+      </StackPanel>
+      <Button Content="全ツールを再インストール（開発用）" Command="{x:Bind ViewModel.ForceInstallToolsCommand}"
+       HorizontalAlignment="Left" Visibility="{x:Bind local:MainPage.BoolToVisibility(ViewModel.IsDevelopmentBuild)}"
+       AutomationProperties.AutomationId="ForceInstallToolsButton"/>
      </StackPanel>
      <TextBlock Text="GitHub公式リリースから取得し、SHA-256検証後にアプリ専用フォルダーへ配置します。"
       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>

@@ -21,6 +21,8 @@
   <ItemGroup>
     <Compile Include="..\YtdlWinUI\Services\ToolInstallerService.cs" Link="Services\ToolInstallerService.cs" />
     <Compile Include="..\YtdlWinUI\Services\ToolPaths.cs" Link="Services\ToolPaths.cs" />
+    <Compile Include="..\YtdlWinUI\Services\YtDlpService.cs" Link="Services\YtDlpService.cs" />
+    <Compile Include="..\YtdlWinUI\Models\AppSettings.cs" Link="Models\AppSettings.cs" />
   </ItemGroup>
 
 </Project>

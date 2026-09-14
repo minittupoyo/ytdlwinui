@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using YtdlWinUI.Models;
 
 namespace YtdlWinUI.Services;
@@ -41,7 +42,7 @@ public sealed class YtDlpService
             "--newline", "--color", "no_color", "-o",
             string.IsNullOrWhiteSpace(settings.FilenameTemplate) ? "%(title)s.%(ext)s" : settings.FilenameTemplate,
             "-P", Path.GetFullPath(settings.OutputPath), "--progress-template",
-            "download:[DOWNLOADING]\t%(progress._percent)s\t%(info.title)s", "--encoding", "utf-8"
+            "download:[DOWNLOADING]\t%(progress._percent)s\t%(info.title)j", "--encoding", "utf-8"
         };
         if (settings.Format is "mp4" or "mkv")
         {
@@ -101,13 +102,30 @@ public sealed class YtDlpService
     {
         while (await reader.ReadLineAsync(cancellationToken) is { } line)
         {
-            if (line.StartsWith("[DOWNLOADING]\t", StringComparison.Ordinal))
-            {
-                string[] parts = line.Split('\t', 3);
-                if (parts.Length == 3 && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double percent))
-                    progress.Report(new DownloadProgress(percent, $"{parts[2]} をダウンロード中…"));
-            }
-            else if (!string.IsNullOrWhiteSpace(line)) progress.Report(new DownloadProgress(null, "処理しています…", line));
+            DownloadProgress? update = ParseOutputLine(line);
+            if (update is not null) progress.Report(update);
         }
+    }
+
+    internal static DownloadProgress? ParseOutputLine(string line)
+    {
+        if (!line.StartsWith("[DOWNLOADING]\t", StringComparison.Ordinal))
+            return string.IsNullOrWhiteSpace(line) ? null : new DownloadProgress(null, "処理しています…", line);
+
+        string[] parts = line.Split('\t', 3);
+        if (parts.Length != 3 ||
+            !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double percent))
+            return null;
+
+        string title;
+        try
+        {
+            title = JsonSerializer.Deserialize<string>(parts[2]) ?? parts[2];
+        }
+        catch (JsonException)
+        {
+            title = parts[2];
+        }
+        return new DownloadProgress(percent, $"{title} をダウンロード中…");
     }
 }

@@ -8,6 +8,7 @@ namespace YtdlWinUI.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject
 {
+    private static readonly IReadOnlyList<string> AllManagedTools = ["yt-dlp", "deno", "ffmpeg", "ffprobe"];
     private readonly SettingsService _settingsService = new();
     private readonly YtDlpService _ytDlpService = new();
     private readonly BrowserProfileService _browserProfileService = new();
@@ -48,6 +49,17 @@ public partial class MainPageViewModel : ObservableObject
 
     public bool IsAudioFormat => SelectedFormat is "mp3" or "aac" or "flac";
     public bool HasMissingTools => _missingTools.Count > 0;
+    public bool IsDevelopmentBuild
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
     public bool HasCookieProfiles => CookieProfiles.Count > 0;
     public string CookieProfileHint => SelectedCookieBrowser == "使用しない"
         ? "ブラウザーのCookieを使用しません。"
@@ -174,9 +186,17 @@ public partial class MainPageViewModel : ObservableObject
     [RelayCommand] private void ClearLog() => LogText = "";
 
     [RelayCommand(CanExecute = nameof(CanInstallTools))]
-    private async Task InstallToolsAsync()
+    private Task InstallToolsAsync()
     {
-        if (!HasMissingTools) return;
+        if (!HasMissingTools) return Task.CompletedTask;
+        return InstallToolsCoreAsync(_missingTools, forceInstall: false);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanForceInstallTools))]
+    private Task ForceInstallToolsAsync() => InstallToolsCoreAsync(AllManagedTools, forceInstall: true);
+
+    private async Task InstallToolsCoreAsync(IReadOnlyCollection<string> tools, bool forceInstall)
+    {
         IsBusy = true;
         IsInstallingTools = true;
         IsProgressIndeterminate = true;
@@ -184,6 +204,7 @@ public partial class MainPageViewModel : ObservableObject
         _toolInstallCancellation = new CancellationTokenSource();
         DownloadCommand.NotifyCanExecuteChanged();
         InstallToolsCommand.NotifyCanExecuteChanged();
+        ForceInstallToolsCommand.NotifyCanExecuteChanged();
         try
         {
             var progress = new Progress<ToolInstallProgress>(update =>
@@ -192,11 +213,11 @@ public partial class MainPageViewModel : ObservableObject
                 IsProgressIndeterminate = update.Percent is null;
                 if (update.Percent is not null) ProgressValue = update.Percent.Value;
             });
-            await _toolInstallerService.InstallMissingAsync(_missingTools, progress, _toolInstallCancellation.Token);
+            await _toolInstallerService.InstallMissingAsync(tools, progress, _toolInstallCancellation.Token);
             RefreshDependencies();
-            if (HasMissingTools)
+            if (!forceInstall && HasMissingTools)
                 throw new InvalidOperationException($"未導入のツールがあります: {string.Join("、", _missingTools)}");
-            Status = "必要なツールをインストールしました";
+            Status = forceInstall ? "全ツールを再インストールしました" : "必要なツールをインストールしました";
             ProgressValue = 100;
             ShowNotice("インストール完了", Status, NoticeKind.Success, TimeSpan.FromSeconds(5));
         }
@@ -221,10 +242,12 @@ public partial class MainPageViewModel : ObservableObject
             IsProgressIndeterminate = false;
             DownloadCommand.NotifyCanExecuteChanged();
             InstallToolsCommand.NotifyCanExecuteChanged();
+            ForceInstallToolsCommand.NotifyCanExecuteChanged();
         }
     }
 
     private bool CanInstallTools() => HasMissingTools && !IsBusy;
+    private bool CanForceInstallTools() => IsDevelopmentBuild && !IsBusy;
 
     private void RefreshDependencies()
     {
@@ -234,6 +257,7 @@ public partial class MainPageViewModel : ObservableObject
             : $"すべて利用可能（{ToolPaths.ManagedToolsDirectory} または PATH）";
         OnPropertyChanged(nameof(HasMissingTools));
         InstallToolsCommand.NotifyCanExecuteChanged();
+        ForceInstallToolsCommand.NotifyCanExecuteChanged();
     }
 
     private void AppendLog(string line)
