@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+AppPackages/
+*.log
+*.binlog
+TestResults/
+artifacts/

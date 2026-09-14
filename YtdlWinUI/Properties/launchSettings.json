@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "YtdlWinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "YtdlWinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
